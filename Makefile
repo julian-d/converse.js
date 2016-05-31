@@ -22,6 +22,7 @@ JSHINTEXCEPTIONS = $(GENERATED) \
 		   src/build-mobile.js \
 		   src/build-no-jquery.js \
 		   src/build-no-dependencies.js \
+		   src/build-mobile-no-jquery.js \
 		   src/build.js \
 		   src/bigint.js
 CHECKSOURCES	= $(filter-out $(JSHINTEXCEPTIONS),$(SOURCES))
