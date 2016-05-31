@@ -93,13 +93,27 @@ obj || (obj = {});
 var __t, __p = '', __e = _.escape, __j = Array.prototype.join;
 function print() { __p += __j.call(arguments, '') }
 with (obj) {
-__p += '<div class="chat-area">\n    <div class="chat-content"></div>\n    <form class="sendXMPPMessage" action="" method="post">\n        ';
+__p += '<div class="chat-area">\n    <div class="chat-content"></div>\n    <div class="new-msgs-indicator hidden">▼ ' +
+((__t = ( unread_msgs )) == null ? '' : __t) +
+' ▼</div>\n    <form class="sendXMPPMessage" action="" method="post">\n        ';
  if (show_toolbar) { ;
 __p += '\n            <ul class="chat-toolbar no-text-select"></ul>\n        ';
  } ;
 __p += '\n        <textarea type="text" class="chat-textarea" \n            placeholder="' +
 ((__t = (label_message)) == null ? '' : __t) +
 '"/>\n    </form>\n</div>\n';
+
+}
+return __p
+};
+
+this["templates"]["chatbox_minimize"] = function(obj) {
+obj || (obj = {});
+var __t, __p = '', __e = _.escape;
+with (obj) {
+__p += '<a class="chatbox-btn toggle-chatbox-button icon-minus" title="' +
+((__t = (info_minimize)) == null ? '' : __t) +
+'"></a>\n';
 
 }
 return __p
@@ -124,7 +138,9 @@ __p += '\n                    ' +
  if (url) { ;
 __p += '\n                </a>\n            ';
  } ;
-__p += '\n        </div>\n        <p class="user-custom-message"><p/>\n    </div>\n    <div class="chat-body">\n        <div class="chat-content"></div>\n        ';
+__p += '\n        </div>\n        <p class="user-custom-message"><p/>\n    </div>\n    <div class="chat-body">\n        <div class="chat-content"></div>\n        <div class="new-msgs-indicator hidden">▼ ' +
+((__t = ( unread_msgs )) == null ? '' : __t) +
+' ▼</div>\n        ';
  if (show_textarea) { ;
 __p += '\n        <form class="sendXMPPMessage" action="" method="post">\n            ';
  if (show_toolbar) { ;
@@ -135,30 +151,6 @@ __p += '\n        <textarea\n            type="text"\n            class="chat-te
 '"/>\n        </form>\n        ';
  } ;
 __p += '\n    </div>\n</div>\n';
-
-}
-return __p
-};
-
-this["templates"]["chatbox_minimize"] = function(obj) {
-obj || (obj = {});
-var __t, __p = '', __e = _.escape;
-with (obj) {
-__p += '<a class="chatbox-btn toggle-chatbox-button icon-minus" title="' +
-((__t = (info_minimize)) == null ? '' : __t) +
-'"></a>\n';
-
-}
-return __p
-};
-
-this["templates"]["chatroom"] = function(obj) {
-obj || (obj = {});
-var __t, __p = '', __e = _.escape;
-with (obj) {
-__p += '<div class="flyout box-flyout">\n    <div class="dragresize dragresize-top"></div>\n    <div class="dragresize dragresize-topleft"></div>\n    <div class="dragresize dragresize-left"></div>\n    <div class="chat-head chat-head-chatroom">\n        <a class="chatbox-btn close-chatbox-button icon-close"></a>\n        <a class="chatbox-btn configure-chatroom-button icon-wrench" style="display:none"></a>\n        <div class="chat-title"> ' +
-((__t = ( _.escape(name) )) == null ? '' : __t) +
-' </div>\n        <p class="chatroom-topic"><p/>\n    </div>\n    <div class="chat-body chatroom-body"><span class="spinner centered"/></div>\n</div>\n';
 
 }
 return __p
@@ -199,6 +191,18 @@ __p += '<!-- <div class="occupants"> -->\n<form class="pure-form room-invite">\n
 '" type="text"/>\n</form>\n<p class="occupants-heading">' +
 ((__t = (label_occupants)) == null ? '' : __t) +
 ':</p>\n<ul class="occupant-list"></ul>\n<!-- </div> -->\n';
+
+}
+return __p
+};
+
+this["templates"]["chatroom"] = function(obj) {
+obj || (obj = {});
+var __t, __p = '', __e = _.escape;
+with (obj) {
+__p += '<div class="flyout box-flyout">\n    <div class="dragresize dragresize-top"></div>\n    <div class="dragresize dragresize-topleft"></div>\n    <div class="dragresize dragresize-left"></div>\n    <div class="chat-head chat-head-chatroom">\n        <a class="chatbox-btn close-chatbox-button icon-close"></a>\n        <a class="chatbox-btn configure-chatroom-button icon-wrench" style="display:none"></a>\n        <div class="chat-title"> ' +
+((__t = ( _.escape(name) )) == null ? '' : __t) +
+' </div>\n        <p class="chatroom-topic"><p/>\n    </div>\n    <div class="chat-body chatroom-body"><span class="spinner centered"/></div>\n</div>\n';
 
 }
 return __p
@@ -277,6 +281,18 @@ __p += '<li><a class="s current" href="#users">' +
 return __p
 };
 
+this["templates"]["controlbox_toggle"] = function(obj) {
+obj || (obj = {});
+var __t, __p = '', __e = _.escape;
+with (obj) {
+__p += '<span class="conn-feedback">' +
+((__t = (label_toggle)) == null ? '' : __t) +
+'</span>\n<span style="display: none" id="online-count">(0)</span>\n';
+
+}
+return __p
+};
+
 this["templates"]["controlbox"] = function(obj) {
 obj || (obj = {});
 var __t, __p = '', __e = _.escape, __j = Array.prototype.join;
@@ -287,18 +303,6 @@ __p += '<div class="flyout box-flyout">\n    <div class="dragresize dragresize-t
 __p += '\n            <a class="chatbox-btn close-chatbox-button icon-close"></a>\n        ';
  } ;
 __p += '\n    </div>\n    <div class="controlbox-panes"></div>\n</div>\n';
-
-}
-return __p
-};
-
-this["templates"]["controlbox_toggle"] = function(obj) {
-obj || (obj = {});
-var __t, __p = '', __e = _.escape;
-with (obj) {
-__p += '<span class="conn-feedback">' +
-((__t = (label_toggle)) == null ? '' : __t) +
-'</span>\n<span style="display: none" id="online-count">(0)</span>\n';
 
 }
 return __p
@@ -931,6 +935,37 @@ __p += '\n        <input type="' +
 return __p
 };
 
+this["templates"]["roster_item"] = function(obj) {
+obj || (obj = {});
+var __t, __p = '', __e = _.escape, __j = Array.prototype.join;
+function print() { __p += __j.call(arguments, '') }
+with (obj) {
+__p += '<a class="open-chat" title="' +
+((__t = (title_fullname)) == null ? '' : __t) +
+': ' +
+((__t = (fullname)) == null ? '' : __t) +
+'\nJID: ' +
+((__t = (jid)) == null ? '' : __t) +
+'\n' +
+((__t = (desc_chat)) == null ? '' : __t) +
+'" href="#"><span class="icon-' +
+((__t = (chat_status)) == null ? '' : __t) +
+'" title="' +
+((__t = (desc_status)) == null ? '' : __t) +
+'"></span>' +
+((__t = (fullname)) == null ? '' : __t) +
+'</a>\n';
+ if (allow_contact_removal) { ;
+__p += '\n<a class="remove-xmpp-contact icon-remove" title="' +
+((__t = (desc_remove)) == null ? '' : __t) +
+'" href="#"></a>\n';
+ } ;
+__p += '\n';
+
+}
+return __p
+};
+
 this["templates"]["roster"] = function(obj) {
 obj || (obj = {});
 var __t, __p = '', __e = _.escape, __j = Array.prototype.join;
@@ -1010,37 +1045,6 @@ __p += '\n                value="state">' +
 return __p
 };
 
-this["templates"]["roster_item"] = function(obj) {
-obj || (obj = {});
-var __t, __p = '', __e = _.escape, __j = Array.prototype.join;
-function print() { __p += __j.call(arguments, '') }
-with (obj) {
-__p += '<a class="open-chat" title="' +
-((__t = (title_fullname)) == null ? '' : __t) +
-': ' +
-((__t = (fullname)) == null ? '' : __t) +
-'\nJID: ' +
-((__t = (jid)) == null ? '' : __t) +
-'\n' +
-((__t = (desc_chat)) == null ? '' : __t) +
-'" href="#"><span class="icon-' +
-((__t = (chat_status)) == null ? '' : __t) +
-'" title="' +
-((__t = (desc_status)) == null ? '' : __t) +
-'"></span>' +
-((__t = (fullname)) == null ? '' : __t) +
-'</a>\n';
- if (allow_contact_removal) { ;
-__p += '\n<a class="remove-xmpp-contact icon-remove" title="' +
-((__t = (desc_remove)) == null ? '' : __t) +
-'" href="#"></a>\n';
- } ;
-__p += '\n';
-
-}
-return __p
-};
-
 this["templates"]["search_contact"] = function(obj) {
 obj || (obj = {});
 var __t, __p = '', __e = _.escape;
@@ -1113,41 +1117,6 @@ __p += '\n    href="#">' +
 return __p
 };
 
-this["templates"]["toolbar"] = function(obj) {
-obj || (obj = {});
-var __t, __p = '', __e = _.escape, __j = Array.prototype.join;
-function print() { __p += __j.call(arguments, '') }
-with (obj) {
-
- if (show_emoticons)  { ;
-__p += '\n    <li class="toggle-smiley icon-happy" title="' +
-((__t = (label_insert_smiley)) == null ? '' : __t) +
-'">\n        <ul>\n            <li><a class="icon-smiley" href="#" data-emoticon=":)"></a></li>\n            <li><a class="icon-wink" href="#" data-emoticon=";)"></a></li>\n            <li><a class="icon-grin" href="#" data-emoticon=":D"></a></li>\n            <li><a class="icon-tongue" href="#" data-emoticon=":P"></a></li>\n            <li><a class="icon-cool" href="#" data-emoticon="8)"></a></li>\n            <li><a class="icon-evil" href="#" data-emoticon=">:)"></a></li>\n            <li><a class="icon-confused" href="#" data-emoticon=":S"></a></li>\n            <li><a class="icon-wondering" href="#" data-emoticon=":\\"></a></li>\n            <li><a class="icon-angry" href="#" data-emoticon=">:("></a></li>\n            <li><a class="icon-sad" href="#" data-emoticon=":("></a></li>\n            <li><a class="icon-shocked" href="#" data-emoticon=":O"></a></li>\n            <li><a class="icon-thumbs-up" href="#" data-emoticon="(^.^)b"></a></li>\n            <li><a class="icon-heart" href="#" data-emoticon="<3"></a></li>\n        </ul>\n    </li>\n';
- } ;
-__p += '\n';
- if (show_call_button)  { ;
-__p += '\n<li class="toggle-call"><a class="icon-phone" title="' +
-((__t = (label_start_call)) == null ? '' : __t) +
-'"></a></li>\n';
- } ;
-__p += '\n';
- if (show_occupants_toggle)  { ;
-__p += '\n<li class="toggle-occupants"><a class="icon-hide-users" title="' +
-((__t = (label_hide_occupants)) == null ? '' : __t) +
-'"></a></li>\n';
- } ;
-__p += '\n';
- if (show_clear_button)  { ;
-__p += '\n<li class="toggle-clear"><a class="icon-remove" title="' +
-((__t = (label_clear)) == null ? '' : __t) +
-'"></a></li>\n';
- } ;
-__p += '\n';
-
-}
-return __p
-};
-
 this["templates"]["toolbar_otr"] = function(obj) {
 obj || (obj = {});
 var __t, __p = '', __e = _.escape, __j = Array.prototype.join;
@@ -1202,6 +1171,41 @@ __p += '\n               <li><a class="auth-otr" data-scheme="fingerprint" href=
 __p += '\n            <li><a href="http://www.cypherpunks.ca/otr/help/3.2.0/levels.php" target="_blank" rel="noopener">' +
 ((__t = (label_whats_this)) == null ? '' : __t) +
 '</a></li>\n        </ul>\n    </li>\n';
+ } ;
+__p += '\n';
+
+}
+return __p
+};
+
+this["templates"]["toolbar"] = function(obj) {
+obj || (obj = {});
+var __t, __p = '', __e = _.escape, __j = Array.prototype.join;
+function print() { __p += __j.call(arguments, '') }
+with (obj) {
+
+ if (show_emoticons)  { ;
+__p += '\n    <li class="toggle-smiley icon-happy" title="' +
+((__t = (label_insert_smiley)) == null ? '' : __t) +
+'">\n        <ul>\n            <li><a class="icon-smiley" href="#" data-emoticon=":)"></a></li>\n            <li><a class="icon-wink" href="#" data-emoticon=";)"></a></li>\n            <li><a class="icon-grin" href="#" data-emoticon=":D"></a></li>\n            <li><a class="icon-tongue" href="#" data-emoticon=":P"></a></li>\n            <li><a class="icon-cool" href="#" data-emoticon="8)"></a></li>\n            <li><a class="icon-evil" href="#" data-emoticon=">:)"></a></li>\n            <li><a class="icon-confused" href="#" data-emoticon=":S"></a></li>\n            <li><a class="icon-wondering" href="#" data-emoticon=":\\"></a></li>\n            <li><a class="icon-angry" href="#" data-emoticon=">:("></a></li>\n            <li><a class="icon-sad" href="#" data-emoticon=":("></a></li>\n            <li><a class="icon-shocked" href="#" data-emoticon=":O"></a></li>\n            <li><a class="icon-thumbs-up" href="#" data-emoticon="(^.^)b"></a></li>\n            <li><a class="icon-heart" href="#" data-emoticon="<3"></a></li>\n        </ul>\n    </li>\n';
+ } ;
+__p += '\n';
+ if (show_call_button)  { ;
+__p += '\n<li class="toggle-call"><a class="icon-phone" title="' +
+((__t = (label_start_call)) == null ? '' : __t) +
+'"></a></li>\n';
+ } ;
+__p += '\n';
+ if (show_occupants_toggle)  { ;
+__p += '\n<li class="toggle-occupants"><a class="icon-hide-users" title="' +
+((__t = (label_hide_occupants)) == null ? '' : __t) +
+'"></a></li>\n';
+ } ;
+__p += '\n';
+ if (show_clear_button)  { ;
+__p += '\n<li class="toggle-clear"><a class="icon-remove" title="' +
+((__t = (label_clear)) == null ? '' : __t) +
+'"></a></li>\n';
  } ;
 __p += '\n';
 

@@ -998,7 +998,9 @@ return __p;
 define('tpl!chatarea', [],function () { return function(obj){
 var __t,__p='',__j=Array.prototype.join,print=function(){__p+=__j.call(arguments,'');};
 with(obj||{}){
-__p+='<div class="chat-area">\n    <div class="chat-content"></div>\n    <form class="sendXMPPMessage" action="" method="post">\n        ';
+__p+='<div class="chat-area">\n    <div class="chat-content"></div>\n    <div class="new-msgs-indicator hidden">▼ '+
+((__t=( unread_msgs ))==null?'':__t)+
+' ▼</div>\n    <form class="sendXMPPMessage" action="" method="post">\n        ';
  if (show_toolbar) { 
 __p+='\n            <ul class="chat-toolbar no-text-select"></ul>\n        ';
  } 
@@ -1027,7 +1029,9 @@ __p+='\n                    '+
  if (url) { 
 __p+='\n                </a>\n            ';
  } 
-__p+='\n        </div>\n        <p class="user-custom-message"><p/>\n    </div>\n    <div class="chat-body">\n        <div class="chat-content"></div>\n        ';
+__p+='\n        </div>\n        <p class="user-custom-message"><p/>\n    </div>\n    <div class="chat-body">\n        <div class="chat-content"></div>\n        <div class="new-msgs-indicator hidden">▼ '+
+((__t=( unread_msgs ))==null?'':__t)+
+' ▼</div>\n        ';
  if (show_textarea) { 
 __p+='\n        <form class="sendXMPPMessage" action="" method="post">\n            ';
  if (show_toolbar) { 
@@ -2221,6 +2225,16 @@ define("converse-templates", [
         'list-multi': 'dropdown'
     };
 
+    var isImage = function (url) {
+        var deferred = new $.Deferred();
+        $("<img>", {
+            src: url,
+            error: deferred.reject,
+            load: deferred.resolve
+        });
+        return deferred.promise();
+    };
+
     $.expr[':'].emptyVal = function(obj){
         return obj.value === '';
     };
@@ -2235,19 +2249,33 @@ define("converse-templates", [
         return false;
     };
 
+    $.fn.throttledHTML = _.throttle($.fn.html, 500);
+
     $.fn.addHyperlinks = function () {
         if (this.length > 0) {
             this.each(function (i, obj) {
-                var x = $(obj).html();
+                var prot, escaped_url;
+                var $obj = $(obj);
+                var x = $obj.html();
                 var list = x.match(/\b(https?:\/\/|www\.|https?:\/\/www\.)[^\s<]{2,200}\b/g );
                 if (list) {
                     for (i=0; i<list.length; i++) {
-                        var prot = list[i].indexOf('http://') === 0 || list[i].indexOf('https://') === 0 ? '' : 'http://';
-                        var escaped_url = encodeURI(decodeURI(list[i])).replace(/[!'()]/g, escape).replace(/\*/g, "%2A");
+                        prot = list[i].indexOf('http://') === 0 || list[i].indexOf('https://') === 0 ? '' : 'http://';
+                        escaped_url = encodeURI(decodeURI(list[i])).replace(/[!'()]/g, escape).replace(/\*/g, "%2A");
                         x = x.replace(list[i], '<a target="_blank" rel="noopener" href="' + prot + escaped_url + '">'+ list[i] + '</a>' );
                     }
                 }
-                $(obj).html(x);
+                $obj.html(x);
+                _.each(list, function (url) {
+                    isImage(url).then(function () {
+                        var prot = url.indexOf('http://') === 0 || url.indexOf('https://') === 0 ? '' : 'http://';
+                        var escaped_url = encodeURI(decodeURI(url)).replace(/[!'()]/g, escape).replace(/\*/g, "%2A");
+                        var new_url = '<a target="_blank" rel="noopener" href="' + prot + escaped_url + '">'+ url + '</a>';
+                        event.target.className = 'chat-image';
+                        x = x.replace(new_url, event.target.outerHTML);
+                        $obj.throttledHTML(x);
+                    });
+                });
             });
         }
         return this;
@@ -2324,6 +2352,13 @@ define("converse-templates", [
              * See actionInfoMessages in src/converse-muc.js
              */
             return str;
+        },
+
+
+        isOTRMessage: function (message) {
+            var $body = $(message).children('body'),
+                text = ($body.length > 0 ? $body.text() : undefined);
+            return text && !!text.match(/^\?OTR/);
         },
 
         isHeadlineMessage: function (message) {
@@ -2672,6 +2707,7 @@ define("polyfill", function(){});
         Strophe.addNamespace('ROSTERX', 'http://jabber.org/protocol/rosterx');
         Strophe.addNamespace('XFORM', 'jabber:x:data');
         Strophe.addNamespace('NICK', 'http://jabber.org/protocol/nick');
+        Strophe.addNamespace('HINTS', 'urn:xmpp:hints');
 
         // Instance level constants
         this.TIMEOUTS = { // Set as module attr so that we can override in tests.
@@ -2725,7 +2761,7 @@ define("polyfill", function(){});
                 }
             }
         };
-		
+
         this.detectLocale = function (library_check) {
             /* Determine which locale is supported by the user's system as well
              * as by the relevant library (e.g. converse.js or moment.js).
@@ -2753,12 +2789,12 @@ define("polyfill", function(){});
             }
             return locale || 'en';
         };
-		
+
         if (!moment.locale) { //moment.lang is deprecated after 2.8.1, use moment.locale instead
             moment.locale = moment.lang;
         }
         moment.locale(this.detectLocale(this.isMomentLocale));
-        this.i18n = settings.i18n ? settings.i18n : locales[this.detectLocale(this.isConverseLocale)];
+        this.i18n = settings.i18n ? settings.i18n : locales[this.detectLocale(this.isConverseLocale)] || {};
 
         // Translation machinery
         // ---------------------
@@ -2780,6 +2816,7 @@ define("polyfill", function(){});
             csi_waiting_time: 0, // Support for XEP-0352. Seconds before client is considered idle and CSI is sent out.
             debug: false,
             expose_rid_and_sid: false,
+            filter_by_resource: false,
             forward_messages: false,
             hide_offline_users: false,
             include_offline_state: false,
@@ -2963,8 +3000,7 @@ define("polyfill", function(){});
         }, 1000);
 
         this.onDisconnected = function (condition) {
-            if (!converse.auto_reconnect) { return; }
-            if (converse.disconnection_cause === Strophe.Status.CONNFAIL) {
+            if (converse.disconnection_cause === Strophe.Status.CONNFAIL && converse.auto_reconnect) {
                 converse.reconnect(condition);
                 return 'reconnecting';
             } else {
@@ -3132,7 +3168,7 @@ define("polyfill", function(){});
 
 
         this.onStatusInitialized = function (deferred) {
-            this.registerIntervalHandler();				
+            this.registerIntervalHandler();
             this.roster = new this.RosterContacts();
             this.roster.browserStorage = new Backbone.BrowserStorage[this.storage](
                 b64_sha1('converse.contacts-'+this.bare_jid));
@@ -3655,7 +3691,6 @@ define("polyfill", function(){});
 
 
         this.Message = Backbone.Model.extend({
-            idAttribute: 'msgid',
             defaults: function(){
                 return {
                     msgid: converse.connection.getUniqueId()
@@ -3688,13 +3723,12 @@ define("polyfill", function(){});
                 });
             },
 
-            createMessage: function ($message, $delay) {
+            getMessageAttributes: function ($message, $delay, original_stanza) {
                 $delay = $delay || $message.find('delay');
                 var body = $message.children('body').text(),
                     delayed = $delay.length > 0,
                     fullname = this.get('fullname'),
                     is_groupchat = $message.attr('type') === 'groupchat',
-                    msgid = $message.attr('id'),
                     chat_state = $message.find(converse.COMPOSING).length && converse.COMPOSING ||
                         $message.find(converse.PAUSED).length && converse.PAUSED ||
                         $message.find(converse.INACTIVE).length && converse.INACTIVE ||
@@ -3721,18 +3755,22 @@ define("polyfill", function(){});
                 } else {
                     sender = 'them';
                 }
-                return this.messages.create({
+                return {
                     chat_state: chat_state,
                     delayed: delayed,
                     fullname: fullname,
                     message: body || undefined,
-                    msgid: msgid,
+                    msgid: $message.attr('id'),
                     sender: sender,
                     time: time
-                });
+                };
+            },
+
+            createMessage: function ($message, $delay, original_stanza) {
+                return this.messages.create(this.getMessageAttributes.apply(this, arguments));
             }
         });
-        
+
         this.ChatBoxes = Backbone.Collection.extend({
             model: converse.ChatBox,
             comparator: 'time_opened',
@@ -3785,17 +3823,9 @@ define("polyfill", function(){});
                     to_jid = $message.attr('to'),
                     to_resource = Strophe.getResourceFromJid(to_jid);
 
-                if (to_resource && to_resource !== converse.resource) {
+                if (converse.filter_by_resource && (to_resource && to_resource !== converse.resource)) {
                     converse.log(
                         'onMessage: Ignoring incoming message intended for a different resource: '+to_jid,
-                        'info'
-                    );
-                    return true;
-                } else if (from_jid === converse.connection.jid) {
-                    // FIXME: Forwarded messages should be sent to specific
-                    // resources, not broadcasted
-                    converse.log(
-                        "onMessage: Ignoring incoming message sent from this client's JID: "+from_jid,
                         'info'
                     );
                     return true;
@@ -3837,7 +3867,7 @@ define("polyfill", function(){});
                 if (msgid && chatbox.messages.findWhere({msgid: msgid})) {
                     return true; // We already have this message stored.
                 }
-                chatbox.createMessage($message, $delay);
+                chatbox.createMessage($message, $delay, message);
                 converse.roster.addResource(contact_jid, resource);
                 converse.emit('message', message);
                 return true;
@@ -4102,6 +4132,9 @@ define("polyfill", function(){});
         });
 
         this.setUpXMLLogging = function () {
+            Strophe.log = function (level, msg) {
+                converse.log(msg, level);
+            };
             if (this.debug) {
                 this.connection.xmlInput = function (body) { converse.log(body.outerHTML); };
                 this.connection.xmlOutput = function (body) { converse.log(body.outerHTML); };
@@ -5716,7 +5749,8 @@ define('text!ca',[],function () { return '{\n   "domain": "converse",\n   "local
                     'click .toggle-smiley': 'toggleEmoticonMenu',
                     'click .toggle-smiley ul li': 'insertEmoticon',
                     'click .toggle-clear': 'clearMessages',
-                    'click .toggle-call': 'toggleCall'
+                    'click .toggle-call': 'toggleCall',
+                    'click .new-msgs-indicator': 'viewUnreadMessages'
                 },
 
                 initialize: function () {
@@ -5731,6 +5765,12 @@ define('text!ca',[],function () { return '{\n   "domain": "converse",\n   "local
                     this.model.on('showHelpMessages', this.showHelpMessages, this);
                     this.model.on('sendMessage', this.sendMessage, this);
                     this.render().fetchMessages().insertIntoPage().hide();
+                    // XXX: adding the event below to the events map above doesn't work.
+                    // The code that gets executed because of that looks like this:
+                    //      this.$el.on('scroll', '.chat-content', this.markScrolled.bind(this));
+                    // Which for some reason doesn't work.
+                    // So working around that fact here:
+                    this.$el.find('.chat-content').on('scroll', this.markScrolled.bind(this));
                     converse.emit('chatBoxInitialized', this);
                 },
 
@@ -5741,6 +5781,7 @@ define('text!ca',[],function () { return '{\n   "domain": "converse",\n   "local
                                         show_toolbar: converse.show_toolbar,
                                         show_textarea: true,
                                         title: this.model.get('fullname'),
+                                        unread_msgs: __('You have unread messages'),
                                         info_close: __('Close this chat box'),
                                         label_personal_message: __('Personal message')
                                     }
@@ -5783,11 +5824,8 @@ define('text!ca',[],function () { return '{\n   "domain": "converse",\n   "local
                     if (!keep_old) {
                         this.clearStatusNotification();
                     }
-                    var was_at_bottom = this.$content.scrollTop() + this.$content.innerHeight() >= this.$content[0].scrollHeight;
                     this.$content.append($('<div class="chat-info chat-event"></div>').text(message));
-                    if (was_at_bottom) {
-                        this.scrollDown();
-                    }
+                    this.scrollDown();
                 },
 
                 addSpinner: function () {
@@ -5802,30 +5840,37 @@ define('text!ca',[],function () { return '{\n   "domain": "converse",\n   "local
                     }
                 },
 
-                prependDayIndicator: function (date) {
-                    /* Prepends an indicator into the chat area, showing the day as
-                     * given by the passed in date.
+                insertDayIndicator: function (date, prepend) {
+                    /* Appends (or prepends if "prepend" is truthy) an indicator
+                     * into the chat area, showing the day as given by the
+                     * passed in date.
                      *
                      * Parameters:
                      *  (String) date - An ISO8601 date string.
                      */
                     var day_date = moment(date).startOf('day');
-                    this.$content.prepend(converse.templates.new_day({
+                    var insert = prepend ? this.$content.prepend: this.$content.append;
+                    insert.call(this.$content, converse.templates.new_day({
                         isodate: day_date.format(),
                         datestring: day_date.format("dddd MMM Do YYYY")
                     }));
                 },
 
-                appendMessage: function (attrs) {
-                    /* Helper method which appends a message to the end of the chat
-                     * box's content area.
+                insertMessage: function (attrs, prepend) {
+                    /* Helper method which appends a message (or prepends if the
+                     * 2nd parameter is set to true) to the end of the chat box's
+                     * content area.
                      *
                      * Parameters:
                      *  (Object) attrs: An object containing the message attributes.
                      */
+                    var insert = prepend ? this.$content.prepend : this.$content.append;
                     _.compose(
-                        _.debounce(this.scrollDown.bind(this), 50),
-                        this.$content.append.bind(this.$content)
+                        this.scrollDownMessageHeight.bind(this),
+                        function ($el) {
+                            insert.call(this.$content, $el);
+                            return $el;
+                        }.bind(this)
                     )(this.renderMessage(attrs));
                 },
 
@@ -5840,79 +5885,54 @@ define('text!ca',[],function () { return '{\n   "domain": "converse",\n   "local
                      * Parameters:
                      *  (Object) attrs: An object containing the message attributes.
                      */
-                    var $first_msg = this.$content.children('.chat-message:first'),
+                    var msg_dates, idx,
+                        $first_msg = this.$content.children('.chat-message:first'),
                         first_msg_date = $first_msg.data('isodate'),
-                        last_msg_date, current_msg_date, day_date, $msgs, msg_dates, idx;
+                        current_msg_date = moment(attrs.time) || moment,
+                        last_msg_date = this.$content.children('.chat-message:last').data('isodate');
+
                     if (!first_msg_date) {
-                        this.appendMessage(attrs);
+                        // This is the first received message, so we insert a
+                        // date indicator before it.
+                        this.insertDayIndicator(current_msg_date);
+                        this.insertMessage(attrs);
                         return;
                     }
-                    current_msg_date = moment(attrs.time) || moment;
-                    last_msg_date = this.$content.children('.chat-message:last').data('isodate');
-
-                    if (typeof last_msg_date !== "undefined" && (current_msg_date.isAfter(last_msg_date) || current_msg_date.isSame(last_msg_date))) {
+                    if (current_msg_date.isAfter(last_msg_date) || current_msg_date.isSame(last_msg_date)) {
                         // The new message is after the last message
                         if (current_msg_date.isAfter(last_msg_date, 'day')) {
                             // Append a new day indicator
-                            day_date = moment(current_msg_date).startOf('day');
-                            this.$content.append(converse.templates.new_day({
-                                isodate: current_msg_date.format(),
-                                datestring: current_msg_date.format("dddd MMM Do YYYY")
-                            }));
+                            this.insertDayIndicator(current_msg_date);
                         }
-                        this.appendMessage(attrs);
+                        this.insertMessage(attrs);
                         return;
                     }
-
-                    if (typeof first_msg_date !== "undefined" &&
-                            (current_msg_date.isBefore(first_msg_date) ||
-                                (current_msg_date.isSame(first_msg_date) && !current_msg_date.isSame(last_msg_date)))) {
-                        // The new message is before the first message
-
-                        if ($first_msg.prev().length === 0) {
-                            // There's no day indicator before the first message, so we prepend one.
-                            this.prependDayIndicator(first_msg_date);
-                        }
+                    if (current_msg_date.isBefore(first_msg_date) || current_msg_date.isSame(first_msg_date)) {
+                        // The message is before the first, but on the same day.
+                        // We need to prepend the message immediately before the
+                        // first message (so that it'll still be after the day indicator).
+                        this.insertMessage(attrs, 'prepend');
                         if (current_msg_date.isBefore(first_msg_date, 'day')) {
-                            _.compose(
-                                    this.scrollDownMessageHeight.bind(this),
-                                    function ($el) {
-                                        this.$content.prepend($el);
-                                        return $el;
-                                    }.bind(this)
-                                )(this.renderMessage(attrs));
-                            // This message is on a different day, so we add a day indicator.
-                            this.prependDayIndicator(current_msg_date);
-                        } else {
-                            // The message is before the first, but on the same day.
-                            // We need to prepend the message immediately before the
-                            // first message (so that it'll still be after the day indicator).
-                            _.compose(
-                                    this.scrollDownMessageHeight.bind(this),
-                                    function ($el) {
-                                        $el.insertBefore($first_msg);
-                                        return $el;
-                                    }
-                                )(this.renderMessage(attrs));
+                            // This message is also on a different day, so we prepend a day indicator.
+                            this.insertDayIndicator(current_msg_date, 'prepend');
                         }
-                    } else {
-                        // We need to find the correct place to position the message
-                        current_msg_date = current_msg_date.format();
-                        $msgs = this.$content.children('.chat-message');
-                        msg_dates = _.map($msgs, function (el) {
-                            return $(el).data('isodate');
-                        });
-                        msg_dates.push(current_msg_date);
-                        msg_dates.sort();
-                        idx = msg_dates.indexOf(current_msg_date)-1;
-                        _.compose(
-                                this.scrollDownMessageHeight.bind(this),
-                                function ($el) {
-                                    $el.insertAfter(this.$content.find('.chat-message[data-isodate="'+msg_dates[idx]+'"]'));
-                                    return $el;
-                                }.bind(this)
-                            )(this.renderMessage(attrs));
+                        return;
                     }
+                    // Find the correct place to position the message
+                    current_msg_date = current_msg_date.format();
+                    msg_dates = _.map(this.$content.children('.chat-message'), function (el) {
+                        return $(el).data('isodate');
+                    });
+                    msg_dates.push(current_msg_date);
+                    msg_dates.sort();
+                    idx = msg_dates.indexOf(current_msg_date)-1;
+                    _.compose(
+                            this.scrollDownMessageHeight.bind(this),
+                            function ($el) {
+                                $el.insertAfter(this.$content.find('.chat-message[data-isodate="'+msg_dates[idx]+'"]'));
+                                return $el;
+                            }.bind(this)
+                        )(this.renderMessage(attrs));
                 },
 
                 renderMessage: function (attrs) {
@@ -5992,11 +6012,27 @@ define('text!ca',[],function () { return '{\n   "domain": "converse",\n   "local
 
                 handleTextMessage: function (message) {
                     this.showMessage(_.clone(message.attributes));
-                    if ((message.get('sender') !== 'me') && (converse.windowState === 'blur')) {
-                        converse.incrementMsgCounter();
+                    if (message.get('sender') !== 'me') {
+                        if (converse.windowState === 'blur' || this.model.get('scrolled', true)) {
+                            converse.incrementMsgCounter();
+                        }
+                        if (!message.get('archive_id') && this.model.get('scrolled', true)) {
+                            // Show "new messages" indicator if we're scrolled
+                            // up, but only if the new message is not a MAM
+                            // archived one.
+                            this.$el.find('.new-msgs-indicator').removeClass('hidden');
+                        }
+                    } else {
+                        // We remove the "scrolled" flag so that the chat area
+                        // gets scrolled down. We always want to scroll down
+                        // when the user writes a message as opposed to when a
+                        // message is received.
+                        this.model.set('scrolled', false);
                     }
                     if (this.shouldShowOnTextMessage()) {
                         this.show();
+                    } else {
+                        this.scrollDown();
                     }
                 },
 
@@ -6095,7 +6131,9 @@ define('text!ca',[],function () { return '{\n   "domain": "converse",\n   "local
                      */
                     converse.connection.send(
                         $msg({'to':this.model.get('jid'), 'type': 'chat'})
-                            .c(this.model.get('chat_state'), {'xmlns': Strophe.NS.CHATSTATES})
+                            .c(this.model.get('chat_state'), {'xmlns': Strophe.NS.CHATSTATES}).up()
+                            .c('no-store', {'xmlns': Strophe.NS.HINTS}).up()
+                            .c('no-permanent-store', {'xmlns': Strophe.NS.HINTS})
                     );
                 },
 
@@ -6332,16 +6370,45 @@ define('text!ca',[],function () { return '{\n   "domain": "converse",\n   "local
                     return this;
                 },
 
+                markScrolled: _.debounce(function (ev) {
+                    /* Called when the chat content is scrolled up or down.
+                     * We want to record when the user has scrolled away from
+                     * the bottom, so that we don't automatically scroll away
+                     * from what the user is reading when new messages are
+                     * received.
+                     */
+                    // TODO: need to indicate when new messages are received
+                    // and the user is scrolled away...
+                    // Should probably take a look at incrementMsgCounter
+                    if (ev && ev.preventDefault) { ev.preventDefault(); }
+                    var is_at_bottom = this.$content.scrollTop() + this.$content.innerHeight() >= this.$content[0].scrollHeight-10;
+                    if (is_at_bottom) {
+                        this.model.set('scrolled', false);
+                        this.$el.find('.new-msgs-indicator').addClass('hidden');
+                    } else {
+                        // We're not at the bottom of the chat area, so we mark
+                        // that the box is in a scrolled-up state.
+                        this.model.set('scrolled', true);
+                    }
+                }, 150),
+
+
+                viewUnreadMessages: function () {
+                    this.model.set('scrolled', false);
+                    this.scrollDown();
+                },
+
                 scrollDownMessageHeight: function ($message) {
-                    if (this.$content.is(':visible')) {
+                    if (this.$content.is(':visible') && !this.model.get('scrolled')) {
                         this.$content.scrollTop(this.$content.scrollTop() + $message[0].scrollHeight);
                     }
                     return this;
                 },
 
                 scrollDown: function () {
-                    if (this.$content.is(':visible')) {
+                    if (this.$content.is(':visible') && !this.model.get('scrolled')) {
                         this.$content.scrollTop(this.$content[0].scrollHeight);
+                        this.$el.find('.new-msgs-indicator').addClass('hidden');
                     }
                     return this;
                 }
@@ -7315,6 +7382,7 @@ define('text!ca',[],function () { return '{\n   "domain": "converse",\n   "local
                     view.$('#controlbox-tabs').empty();
                     view.renderLoginPanel();
                 }
+                return result;
             },
 
             _tearDown: function () {
@@ -8174,7 +8242,8 @@ define('text!ca',[],function () { return '{\n   "domain": "converse",\n   "local
                     'click .toggle-clear': 'clearChatRoomMessages',
                     'click .toggle-call': 'toggleCall',
                     'click .toggle-occupants a': 'toggleOccupants',
-                    'keypress textarea.chat-textarea': 'keyPressed',
+                    'click .new-msgs-indicator': 'viewUnreadMessages',
+                    'keypress textarea.chat-textarea': 'keyPressed'
                 },
 
                 initialize: function () {
@@ -8193,6 +8262,12 @@ define('text!ca',[],function () { return '{\n   "domain": "converse",\n   "local
                     this.join(null, {'maxstanzas': converse.muc_history_max_stanzas});
                     this.fetchMessages();
                     this.$el.insertAfter(converse.chatboxviews.get("controlbox").$el);
+                    // XXX: adding the event below to the events map above doesn't work.
+                    // The code that gets executed because of that looks like this:
+                    //      this.$el.on('scroll', '.chat-content', this.markScrolled.bind(this));
+                    // Which for some reason doesn't work.
+                    // So working around that fact here:
+                    this.$el.find('.chat-content').on('scroll', this.markScrolled.bind(this));
                     converse.emit('chatRoomOpened', this);
                 },
 
@@ -8209,6 +8284,7 @@ define('text!ca',[],function () { return '{\n   "domain": "converse",\n   "local
                         this.$('.chatroom-body').empty()
                             .append(
                                 converse.templates.chatarea({
+                                    'unread_msgs': __('You have unread messages'),
                                     'show_toolbar': converse.show_toolbar,
                                     'label_message': __('Message')
                                 }))
@@ -8285,10 +8361,8 @@ define('text!ca',[],function () { return '{\n   "domain": "converse",\n   "local
                     }).c("body").t(text).up()
                     .c("x", {xmlns: "jabber:x:event"}).c("composing");
                     converse.connection.send(msg);
-
-                    var fullname = converse.xmppstatus.get('fullname');
                     this.model.messages.create({
-                        fullname: _.isEmpty(fullname)? converse.bare_jid: fullname,
+                        fullname: this.model.get('nick'),
                         sender: 'me',
                         time: moment().format(),
                         message: text,
@@ -8773,7 +8847,9 @@ define('text!ca',[],function () { return '{\n   "domain": "converse",\n   "local
                     for (i=0; i<reasons.length; i++) {
                         this.showStatusNotification(__('The reason given is: "'+reasons[i]+'"'), true);
                     }
-                    this.scrollDown();
+                    if (disconnect_msgs.length || msgs.length || reasons.length) {
+                        this.scrollDown();
+                    }
                     return el;
                 },
 
@@ -8825,11 +8901,21 @@ define('text!ca',[],function () { return '{\n   "domain": "converse",\n   "local
                     this.occupantsview.updateOccupantsOnPresence(pres);
                 },
 
+                setChatRoomSubject: function (sender, subject) {
+                    this.$el.find('.chatroom-topic').text(subject).attr('title', subject);
+                    // For translators: the %1$s and %2$s parts will get replaced by the user and topic text respectively
+                    // Example: Topic set by JC Brand to: Hello World!
+                    this.$content.append(
+                        converse.templates.info({
+                            'message': __('Topic set by %1$s to: %2$s', sender, subject)
+                        }));
+                    this.scrollDown();
+                },
+
                 onChatRoomMessage: function (message) {
                     var $message = $(message),
                         $forwarded = $message.find('forwarded'),
                         $delay;
-
                     if ($forwarded.length) {
                         $message = $forwarded.children('message');
                         $delay = $forwarded.children('delay');
@@ -8838,24 +8924,24 @@ define('text!ca',[],function () { return '{\n   "domain": "converse",\n   "local
                         msgid = $message.attr('id'),
                         resource = Strophe.getResourceFromJid(jid),
                         sender = resource && Strophe.unescapeNode(resource) || '',
-                        subject = $message.children('subject').text();
-
-                    if (msgid && this.model.messages.findWhere({msgid: msgid})) {
-                        return true; // We already have this message stored.
+                        subject = $message.children('subject').text(),
+                        dupes = msgid && this.model.messages.filter(function (msg) {
+                            // Find duplicates.
+                            // Some bots (like HAL in the prosody chatroom)
+                            // respond to commands with the same ID as the
+                            // original message. So we also check the sender.
+                            return msg.get('msgid') === msgid && msg.get('fullname') === sender;
+                        });
+                    if (dupes && dupes.length) {
+                        return true;
                     }
                     if (subject) {
-                        this.$el.find('.chatroom-topic').text(subject).attr('title', subject);
-                        // For translators: the %1$s and %2$s parts will get replaced by the user and topic text respectively
-                        // Example: Topic set by JC Brand to: Hello World!
-                        this.$content.append(
-                            converse.templates.info({
-                                'message': __('Topic set by %1$s to: %2$s', sender, subject)
-                            }));
+                        this.setChatRoomSubject(sender, subject);
                     }
                     if (sender === '') {
                         return true;
                     }
-                    this.model.createMessage($message, $delay);
+                    this.model.createMessage($message, $delay, message);
                     if (sender !== this.model.get('nick')) {
                         // We only emit an event if it's not our own message
                         converse.emit('message', message);
@@ -9438,12 +9524,11 @@ define('text!ca',[],function () { return '{\n   "domain": "converse",\n   "local
                 }
             },
 
-            ChatBoxes: {
-                createMessage: function ($message, $delay) {
-                    var message = this._super.createMessage.apply(this, arguments);
-                    message.save({
-                        archive_id: $message.find('result[xmlns="'+Strophe.NS.MAM+'"]').attr('id')
-                    });
+            ChatBox: {
+                getMessageAttributes: function ($message, $delay, original_stanza) {
+                    var attrs = this._super.getMessageAttributes.apply(this, arguments);
+                    attrs.archive_id = $(original_stanza).find('result[xmlns="'+Strophe.NS.MAM+'"]').attr('id');
+                    return attrs;
                 }
             },
 
@@ -9966,12 +10051,6 @@ define('text!ca',[],function () { return '{\n   "domain": "converse",\n   "local
                     }
                 },
 
-                isOTRMessage: function ($message) {
-                    var $body = $message.children('body'),
-                        text = ($body.length > 0 ? $body.text() : undefined);
-                    return !!text.match(/^\?OTR/);
-                },
-
                 shouldPlayNotification: function ($message) {
                     /* Don't play a notification if this is an OTR message but
                      * encryption is not yet set up. That would mean that the
@@ -9979,10 +10058,10 @@ define('text!ca',[],function () { return '{\n   "domain": "converse",\n   "local
                      * "visible" OTR messages being exchanged.
                      */
                     return this._super.shouldPlayNotification.apply(this, arguments) &&
-                        !(this.isOTRMessage($message) && !_.contains([UNVERIFIED, VERIFIED], this.get('otr_status')));
+                        !(utils.isOTRMessage($message[0]) && !_.contains([UNVERIFIED, VERIFIED], this.get('otr_status')));
                 },
 
-                createMessage: function ($message, $delay, archive_id) {
+                createMessage: function ($message, $delay, original_stanza) {
                     var converse = this._super.converse,
                         $body = $message.children('body'),
                         text = ($body.length > 0 ? $body.text() : undefined);
@@ -10166,9 +10245,12 @@ define('text!ca',[],function () { return '{\n   "domain": "converse",\n   "local
 
                 createMessageStanza: function () {
                     var stanza = this._super.createMessageStanza.apply(this, arguments);
-                    if (this.model.get('otr_status') !== UNENCRYPTED) {
+                    if (this.model.get('otr_status') !== UNENCRYPTED || utils.isOTRMessage(stanza.nodeTree)) {
                         // OTR messages aren't carbon copied
-                        stanza.c('private', {'xmlns': Strophe.NS.CARBONS});
+                        stanza.c('private', {'xmlns': Strophe.NS.CARBONS}).up()
+                              .c('no-store', {'xmlns': Strophe.NS.HINTS}).up()
+                              .c('no-permanent-store', {'xmlns': Strophe.NS.HINTS}).up()
+                              .c('no-copy', {'xmlns': Strophe.NS.HINTS});
                     }
                     return stanza;
                 },
@@ -11094,6 +11176,9 @@ define('text!ca',[],function () { return '{\n   "domain": "converse",\n   "local
             converse.shouldNotifyOfMessage = function (message) {
                 /* Is this a message worthy of notification?
                  */
+                if (utils.isOTRMessage(message)) {
+                    return false;
+                }
                 var $message = $(message),
                     $forwarded = $message.find('forwarded');
                 if ($forwarded.length) {
@@ -11810,7 +11895,7 @@ define('text!ca',[],function () { return '{\n   "domain": "converse",\n   "local
             // relevant objects or classes.
             //
             // New functions which don't exist yet can also be added.
-            
+
             registerGlobalEventHandlers: function () {
                 $(document).on('mousemove', function (ev) {
                     if (!this.resizing || !this.allow_dragresize) { return true; }
@@ -12111,7 +12196,7 @@ define('text!ca',[],function () { return '{\n   "domain": "converse",\n   "local
                 'jid': from_jid,
                 'fullname':  from_jid,
                 'type': 'headline'
-            }).createMessage($message);
+            }).createMessage($message, undefined, message);
             converse.emit('message', message);
         }
         return true;
@@ -12125,7 +12210,7 @@ define('text!ca',[],function () { return '{\n   "domain": "converse",\n   "local
             // relevant objects or classes.
             //
             // New functions which don't exist yet can also be added.
-            
+
             ChatBoxViews: {
                 onChatBoxAdded: function (item) {
                     var view = this.get(item.get('id'));
@@ -12174,6 +12259,7 @@ define('text!ca',[],function () { return '{\n   "domain": "converse",\n   "local
                                         show_toolbar: converse.show_toolbar,
                                         show_textarea: false,
                                         title: this.model.get('fullname'),
+                                        unread_msgs: __('You have unread messages'),
                                         info_close: __('Close this box'),
                                         info_minimize: __('Minimize this box'),
                                         label_personal_message: ''

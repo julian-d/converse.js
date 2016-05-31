@@ -139,7 +139,9 @@ watch: stamp-bundler
 BUILDS = dist/converse.js \
 		 dist/converse.min.js \
          dist/converse-mobile.js \
+         dist/converse-mobile.nojquery.js \
          dist/converse-mobile.min.js \
+         dist/converse-mobile.nojquery.min.js \
          dist/converse.nojquery.js \
  		 dist/converse.nojquery.min.js \
 		 dist/converse-no-dependencies.min.js \
@@ -161,7 +163,10 @@ dist/converse-mobile.min.js: stamp-bower src locale components *.js
 	$(RJS) -o src/build-mobile.js
 dist/converse-mobile.js: stamp-bower src locale components *.js
 	$(RJS) -o src/build-mobile.js optimize=none out=dist/converse-mobile.js
-
+dist/converse-mobile.nojquery.min.js: stamp-bower src locale components *.js
+	$(RJS) -o src/build-mobile-no-jquery.js
+dist/converse-mobile.nojquery.js: stamp-bower src locale components *.js
+	$(RJS) -o src/build-mobile-no-jquery.js optimize=none out=dist/converse-mobile.nojquery.js
 .PHONY: jsmin
 jsmin: $(BUILDS)
 
